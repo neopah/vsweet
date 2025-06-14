@@ -1,4 +1,4 @@
-name: build
+name: neu
 on:
   workflow_dispatch:
 jobs:

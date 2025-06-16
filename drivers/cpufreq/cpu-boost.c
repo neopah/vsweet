@@ -414,49 +414,17 @@ static struct input_handler cpuboost_input_handler = {
 
 static int cpu_boost_init(void)
 {
-	int cpu, ret, i;
+	int cpu, ret;
 	struct cpu_sync *s;
-	struct sched_param param = { .sched_priority = 2 };
-	cpumask_t sys_bg_mask;
-
-	/* Hardcode the cpumask to bind the kthread to it */
-	cpumask_clear(&sys_bg_mask);
-	for (i = 0; i <= 5; i++) {
-		cpumask_set_cpu(i, &sys_bg_mask);
-	}
+	struct sched_param param = { .sched_priority = MAX_RT_PRIO - 2 };
 
 	kthread_init_worker(&cpu_boost_worker);
-	cpu_boost_worker_thread = kthread_create(kthread_worker_fn,
+	cpu_boost_worker_thread = kthread_run(kthread_worker_fn,
 		&cpu_boost_worker, "cpu_boost_worker_thread");
-	if (IS_ERR(cpu_boost_worker_thread)) {
-		pr_err("cpu-boost: Failed to init kworker!\n");
+	if (IS_ERR(cpu_boost_worker_thread))
 		return -EFAULT;
-	}
 
-	ret = sched_setscheduler(cpu_boost_worker_thread, SCHED_FIFO, &param);
-	if (ret)
-		pr_err("cpu-boost: Failed to set SCHED_FIFO!\n");
-
-	kthread_init_worker(&powerkey_cpu_boost_worker);
-	powerkey_cpu_boost_worker_thread = kthread_create(kthread_worker_fn,
-		&powerkey_cpu_boost_worker, "powerkey_cpu_boost_worker_thread");
-	if (IS_ERR(powerkey_cpu_boost_worker_thread)) {
-		pr_err("powerkey_cpu-boost: Failed to init kworker!\n");
-		return -EFAULT;
-	}
-
-	ret = sched_setscheduler(powerkey_cpu_boost_worker_thread, SCHED_FIFO, &param);
-	if (ret)
-		pr_err("powerkey_cpu-boost: Failed to set SCHED_FIFO!\n");
-
-	/* Now bind it to the cpumask */
-	kthread_bind_mask(cpu_boost_worker_thread, &sys_bg_mask);
-	kthread_bind_mask(powerkey_cpu_boost_worker_thread, &sys_bg_mask);
-
-	/* Wake it up! */
-	wake_up_process(cpu_boost_worker_thread);
-	wake_up_process(powerkey_cpu_boost_worker_thread);
-
+	sched_setscheduler(cpu_boost_worker_thread, SCHED_FIFO, &param);
 	kthread_init_work(&input_boost_work, do_input_boost);
 	kthread_init_work(&powerkey_input_boost_work, do_powerkey_input_boost);
 	INIT_DELAYED_WORK(&input_boost_rem, do_input_boost_rem);

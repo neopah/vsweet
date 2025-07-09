@@ -77,6 +77,7 @@ static int lowmem_minfree[6] = {
 	8192, 12288, 16384, 20480, 24576, 28672
 };
 static int lowmem_minfree_size = 6;
+module_param_array_named(minfree, lowmem_minfree, int, &lowmem_minfree_size, 0644);
 static int lmk_fast_run = 1;
 
 static unsigned long lowmem_deathpending_timeout;
